@@ -286,11 +286,16 @@ main(int argc, char *argv[])
 	(void)setpriority(PRIO_PROCESS, 0, 0);
 
 	openlog("login", LOG_ODELAY, LOG_AUTH);
+    syslog(LOG_NOTICE, "Returned from openlog");
 
 	uid = getuid();
 	euid = geteuid();
 	egid = getegid();
 
+    int myindex;
+    for (myindex=0;myindex<argc;myindex++)
+        syslog(LOG_NOTICE, "argv[%d]=%s",myindex,argv[myindex]);
+    
 #ifdef __APPLE__
 	while ((ch = getopt(argc, argv, "1fh:lpq")) != -1)
 #else
@@ -815,7 +820,9 @@ main(int argc, char *argv[])
 	 * We must fork() before setuid() because we need to call
 	 * pam_close_session() as root.
 	 */
+    syslog(LOG_NOTICE, "before fork");
 	pid = fork();
+    syslog(LOG_NOTICE, "after fork");
 	if (pid < 0) {
 		err(1, "fork");
 	} else if (pid != 0) {
@@ -829,10 +836,12 @@ main(int argc, char *argv[])
 #endif /* !__APPLE__ */
 #ifdef __APPLE__
 		/* Our SIGHUP handler may interrupt the wait */
+        syslog(LOG_NOTICE, "Started waitpid loop");
 		int res;
 		do {
 			res = waitpid(pid, &status, 0);
 		} while (res == -1 && errno == EINTR);
+        syslog(LOG_NOTICE, "Completed waitpid loop");
 #else
 		waitpid(pid, &status, 0);
 #endif
@@ -847,6 +856,7 @@ main(int argc, char *argv[])
 	 * NOTICE: We are now in the child process!
 	 */
 
+    syslog(LOG_NOTICE, "We are now in the child process!");
 #ifdef __APPLE__
 	/* Restore the default SIGHUP handler for the child. */
 	(void)signal(SIGHUP, SIG_DFL);
@@ -1045,13 +1055,16 @@ main(int argc, char *argv[])
 
 #ifdef __APPLE__
 	if (fflag && *argv) {
-		*argv = arg0;
+        syslog(LOG_ERR,"***ERROR*** execvp:%s", pwd->pw_shell);
+        *argv = arg0;
 		execvp(pwd->pw_shell, argv);
 		err(1, "%s", arg0);
 	}
 #endif /* __APPLE__ */
+        
+    syslog(LOG_NOTICE,"execlp:%s", shell);
 	execlp(shell, arg0, (char *)0);
-	err(1, "%s", shell);
+    err(1, "%s", shell);
 
 	/*
 	 * That's it, folks!
